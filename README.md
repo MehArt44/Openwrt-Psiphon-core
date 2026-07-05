@@ -1,6 +1,5 @@
 **English** | [پارسی](README.md)
 
-
 # OpenWrt Psiphon-Core Setup & Automation Guide
 
 🛑فایل کامپایل شده و کانفیگ و... ساخته شده در پوشه 
