@@ -1,12 +1,6 @@
 **English** | [پارسی](README.md)
 
 
-چشم، ساختار و ترتیب دقیقاً طبق فایلی که فرستادید حفظ شد و فقط متن‌های فارسی به انگلیسی روان برگردانده شدند. همچنین بخش «ساختار و مسیر فایل‌ها» به همان انتهای فایل منتقل شد تا چیدمان شما دست‌نخورده باقی بماند.
-
-دستور زیر را کپی کرده و در ترمینال کامپیوتر خود اجرا کنید تا فایل واحد `README.md` با همان ترتیب دلخواه شما ساخته شود:
-
-```bash
-cat << 'EOF' > README.md
 # OpenWrt Psiphon-Core Setup & Automation Guide
 
 🛑 The pre-compiled binary, configuration file, and required assets are already built and included inside the `Router.zip` folder. The compilation and setup steps below are detailed for verification purposes. You only need to execute the runtime commands! 🛑
