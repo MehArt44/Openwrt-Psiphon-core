@@ -1,4 +1,4 @@
-**فارسی** | [English](README.md)
+**فارسی** | [English](README.en.md)
 
 # OpenWrt Psiphon-Core Setup & Automation Guide
 
