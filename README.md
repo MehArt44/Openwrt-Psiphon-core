@@ -55,6 +55,8 @@ opkg update && opkg install socat
 ```bash
 cat << 'INPUT_EOF' > /usr/bin/psiphon.config
 {
+  "SocksProxyPort": 10808,
+  "HttpProxyPort": 10809,
   "ClientPlatform": "Windows_10.0.26200_11",
   "ClientVersion": "187",
   "DataRootDirectory": "/usr/bin/psiphon_data",
@@ -64,6 +66,7 @@ cat << 'INPUT_EOF' > /usr/bin/psiphon.config
   "ServerEntrySignaturePublicKey": "sHuUVTWaRyh5pZwy4UguSgkwmBe0EHtJJkoF5WrxmvA=",
   "UseIndistinguishableTLS": true
 }
+
 INPUT_EOF
 
 ```
