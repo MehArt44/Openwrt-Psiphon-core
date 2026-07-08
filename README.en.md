@@ -1,60 +1,49 @@
 **English** | [پارسی](README.md)
 
-
-# OpenWrt Psiphon-Core Setup & Automation Guide
-
-🛑 The pre-compiled binary, configuration file, and required assets are already built and included inside the `Router.zip` folder. The compilation and setup steps below are detailed for verification purposes. You only need to execute the runtime commands! 🛑
-
-This project provides a comprehensive guide and an intelligent automation script to deploy, manage, and bridge the Linux-based Psiphon core (`psiphon-core`) on **OpenWrt** routers (specifically optimized for 64-bit processors with `aarch64_cortex-a53` architecture).
-
-Due to censorship circumvention mechanisms, Psiphon binds to random SOCKS and HTTP ports every time it starts. This script dynamically captures these random ports from the system logs and bridges them to fixed ports on your local network (LAN).
+این هم نسخه انگلیسی کامل و یکپارچه (README.en.md) که برای مخزن گیت‌هاب شما بهینه‌سازی شده است. تمام متون، جداول و توضیحات به انگلیسی روان برگردانده شده‌اند تا کاربران بین‌المللی نیز بتوانند به راحتی از آن استفاده کنند:
 
 ---
 
-## 🛠️ 1. Compiling the Binary File (On your Computer)
+```markdown
+# OpenWrt 24.10 Psiphon-Core Setup & Automation Guide
 
-If you wish to manually compile the Psiphon core binary from the official Labs repository for your router's architecture (`arm64`), open a terminal on your computer and run the following commands:
+This project provides a comprehensive guide and an intelligent script to deploy, manage, and pair the native Linux Psiphon core (`psiphon-core`) with **OpenWrt** routers (specifically optimized for version 24.10 and 64-bit architectures like `aarch64_cortex-a53`, such as the GL-MT3000).
 
-```bash
-# 1. Clone the official Psiphon Labs repository
-git clone [https://github.com/Psiphon-Labs/psiphon-tunnel-core.git](https://github.com/Psiphon-Labs/psiphon-tunnel-core.git)
-
-# 2. Navigate to the project root directory
-cd psiphon-tunnel-core
-
-# 3. Download dependencies and set environment variables for 64-bit Linux ARM
-go mod download
-export GOOS=linux
-export GOARCH=arm64
-
-# 4. Compile a highly optimized and lightweight binary for the router
-go build -ldflags="-s -w" -o psiphon-core .
-
-```
-
-Once completed, transfer the generated `psiphon-core` file to the `/usr/bin/` directory on your router.
+Due to censorship circumvention mechanics, the Psiphon core binds to completely random SOCKS and HTTP ports upon each execution. This script dynamically captures these random ports from the system logs, automatically detects your router's local gateway IP, and forwards them to fixed, predictable ports accessible across your local area network (LAN). Furthermore, it introduces on-the-fly egress region (country) selection.
 
 ---
 
-## 🚀 2. Preparation & Prerequisites Installation (On the Router)
+## 📂 Directory Structure & File Paths
 
-Run these commands in the router's terminal to grant execution permissions and install the required `socat` utility:
+Before running the automation script, prepare the following 3 items and transfer them to their respective paths on the router using an SFTP/SCP client (e.g., MobaXterm or WinSCP):
+
+| # | Item Type | File / Folder Name | Target Path on Router | Description |
+|---|---|---|---|---|
+| 1 | **Binary Executable** | `psiphon-core` | `/usr/bin/psiphon-core` | Compiled binary matching your router's CPU architecture (e.g., ARM64) |
+| 2 | **Configuration File** | `psiphon.config` | `/usr/bin/psiphon.config` | Contains client configurations, handshake keys, and basic parameters |
+| 3 | **Internal Database** | `psiphon_data` | `/usr/bin/psiphon_data/` | Directory where server entries, handshake cache, and configuration updates are stored |
+
+---
+
+## 🛠️ 1. Environmental Setup & Prerequisites (On Router)
+
+Once the files have been uploaded to the `/usr/bin/` directory, execute the following commands in the router's terminal to grant execution permissions and install the necessary routing wrapper (`socat`):
 
 ```bash
-# Grant execution permission to the binary and create the data directory
+# Grant executable permissions to the binary and create the data directory
 chmod +x /usr/bin/psiphon-core
 mkdir -p /usr/bin/psiphon_data
 
-# Update package lists and install socat for port redirection
+# Update package feeds and install socat for dynamic traffic redirection
 opkg update && opkg install socat
 
 ```
 
 ---
 
-## 📝 3. Creating the Public Configuration File (`psiphon.config`)
+## 📝 2. Generate the Global Configuration File (`psiphon.config`)
 
-Copy and paste the following block entirely into your router's terminal to generate a standardized configuration file without any personal tracking or identifying keys:
+Copy the block below and paste it directly into your router's terminal to initialize a standard configuration template (the region parameter will be managed dynamically by the launcher script):
 
 ```bash
 cat << 'INPUT_EOF' > /usr/bin/psiphon.config
@@ -64,7 +53,7 @@ cat << 'INPUT_EOF' > /usr/bin/psiphon.config
   "ClientPlatform": "Windows_10.0.26200_11",
   "ClientVersion": "187",
   "DataRootDirectory": "/usr/bin/psiphon_data",
-  "EgressRegion": "US",
+  "EgressRegion": "ALL",
   "PropagationChannelId": "0000000000000000",
   "SponsorId": "0000000000000000",
   "ServerEntrySignaturePublicKey": "sHuUVTWaRyh5pZwy4UguSgkwmBe0EHtJJkoF5WrxmvA=",
@@ -76,83 +65,123 @@ INPUT_EOF
 
 ---
 
-## ⚡ 4. Dynamic & Intelligent Startup Script (On the Router)
+## ⚡ 3. Dynamic Launcher Script (With Region Selection)
 
-> ⚠️ **CRITICAL NOTE:** If your router's local IP address is different from `192.168.0.1`, make sure to update the IP address in the `socat` lines (Section 5) with your actual router gateway IP.
+This script automatically discovers your router's active LAN gateway IP, injects your chosen target region into the configuration profile, parses the JSON log array to extract the randomized internal ports, and binds them to the local firewall interfaces.
 
-Copy and execute the following script in the router's terminal to initialize Psiphon and bridge the ports:
+> 💡 **Region Selection Guide (TARGET_REGION):**
+> Change the `TARGET_REGION` variable on the very first line of the script below to any two-letter country code (capitalized) to route your traffic accordingly.
+> * **`ALL`** : Connects to the fastest available server (Best Performance)
+> 
+> 
+> | Code | Country | | Code | Country |
+> | :---: | :--- | | :---: | :--- |
+> | **`AT`** | Austria | | **`IT`** | Italy |
+> | **`BE`** | Belgium | | **`JP`** | Japan |
+> | **`CA`** | Canada | | **`NL`** | Netherlands |
+> | **`CH`** | Switzerland | | **`NO`** | Norway |
+> | **`DE`** | Germany | | **`PL`** | Poland |
+> | **`DK`** | Denmark | | **`SE`** | Sweden |
+> | **`ES`** | Spain | | **`SG`** | Singapore |
+> | **`FI`** | Finland | | **`US`** | United States |
+> | **`FR`** | France | | **`GB`** | United Kingdom |
 
 ```bash
-# 1. Terminate any existing instances to avoid port conflicts
+# 🌍 Define the egress country code (Two-letter uppercase code, or ALL for the fastest server)
+TARGET_REGION="ALL"
+
+echo "Setting Psiphon egress region to: $TARGET_REGION"
+# Dynamically update the configuration profile inline
+sed -i "s/\"EgressRegion\": \".*\"/\"EgressRegion\": \"$TARGET_REGION\"/g" /usr/bin/psiphon.config
+
+# 1. Terminate any overlapping instances to avoid port collision
 killall -9 psiphon-core socat 2>/dev/null
 
-# 2. Run Psiphon core in the background
+# 2. Spin up the Psiphon core in the background (storing volatile logs in temporary RAM)
 /usr/bin/psiphon-core -config /usr/bin/psiphon.config -dataRootDirectory /usr/bin/psiphon_data > /tmp/psiphon.log 2>&1 &
 
-# 3. Wait a few seconds for Psiphon to establish the tunnel and open internal ports
-echo "Starting Psiphon... Please wait 7 seconds..."
+# 3. Wait for the tunnel handshake to establish and open local random proxy interfaces
+echo "Initializing Psiphon Core... Sleeping for 7 seconds..."
 sleep 7
 
-# 4. Automatically extract dynamic random ports from the log file
-SOCKS_PORT=$(http_port=$(cat /tmp/psiphon.log | grep -o '"port":[0-9]*' | cut -d':' -f2); echo $http_port | awk '{print $1}')
-HTTP_PORT=$(http_port=$(cat /tmp/psiphon.log | grep -o '"port":[0-9]*' | cut -d':' -f2); echo $http_port | awk '{print $2}')
+# 4. Safely parse the exact randomized local proxy ports from the JSON log nodes
+SOCKS_PORT=$(grep "ListeningSocksProxyPort" /tmp/psiphon.log | grep -o '"port":[0-9]*' | cut -d':' -f2)
+HTTP_PORT=$(grep "ListeningHttpProxyPort" /tmp/psiphon.log | grep -o '"port":[0-9]*' | cut -d':' -f2)
 
-echo "Detected Ports -> SOCKS: $SOCKS_PORT | HTTP: $HTTP_PORT"
+echo "Captured randomized internal ports -> SOCKS: $SOCKS_PORT | HTTP: $HTTP_PORT"
 
-# 5. Establish stable port forwarding via socat to the router's LAN IP (Ports 10808 and 10809)
-socat TCP-LISTEN:10809,fork,bind=192.168.0.1 TCP:127.0.0.1:$HTTP_PORT &
-socat TCP-LISTEN:10808,fork,bind=192.168.0.1 TCP:127.0.0.1:$SOCKS_PORT &
+# 5. Dynamically query the router's local gateway IP address (LAN IP) via ubus
+ROUTER_IP=$(ubus call network.interface.lan status | jsonfilter -e '@["ipv4-address"][0].address')
+echo "Detected Router LAN IP: $ROUTER_IP"
 
-# 6. Append firewall rules to accept incoming traffic from the LAN interface
-iptables -I INPUT -p tcp -i br-lan --dport 10808:10809 -j ACCEPT
+# 6. Establish a stable socket proxy bridge via socat mapping to static ports 10808 & 10809
+socat TCP-LISTEN:10809,fork,bind=$ROUTER_IP TCP:127.0.0.1:$HTTP_PORT &
+socat TCP-LISTEN:10808,fork,bind=$ROUTER_IP TCP:127.0.0.1:$SOCKS_PORT &
 
-echo "Psiphon has been successfully bound to fixed LAN ports!"
+# 7. Append local zone rule to native OpenWrt 24.10 nftables (fw4) pipeline to accept incoming downstream traffic
+nft add rule inet fw4 input iifname "br-lan" tcp dport 10808-10809 accept 2>/dev/null
+
+echo "Psiphon core successfully paired with static LAN ports 10808 & 10809 under location: $TARGET_REGION!"
 
 ```
 
 ---
 
-## 🛑 5. Deactivation & Teardown Commands
+## 🔍 4. Troubleshooting & Connection Verification
 
-Whenever you need to completely stop Psiphon, kill the bridged processes, and clear the firewall rules, run the following command in your router's terminal:
+To ensure that the cryptographic tunnel has successfully broken through and traffic is actively routed, execute the following validation commands:
+
+* **Inspect live handshake logs:** (Look for the node key `"noticeType":"ConnectedServerRegion"`)
+```bash
+tail -n 20 /tmp/psiphon.log
+
+```
+
+
+* **Verify active downstream socket listeners:**
+```bash
+netstat -tulpn | grep -E '10808|10809'
+
+```
+
+
+* **Perform a WAN exit point check from within the router terminal:** (Should print an uncensored foreign IP address)
+```bash
+curl -x [http://127.0.0.1:10809](http://127.0.0.1:10809) [https://ifconfig.me](https://ifconfig.me)
+
+```
+
+
+
+---
+
+## 🛑 5. Process Teardown & Full Disabling Command
+
+To gracefully kill the core runtime engine, clean up system memory, and tear down open listeners, run the following sequence:
 
 ```bash
-# 1. Kill Psiphon core and socat processes
+# Terminate core binary threads and socket forwards
 killall -9 psiphon-core socat 2>/dev/null
 
-# 2. Remove the firewall rule that allowed traffic through ports 10808 and 10809
-iptables -D INPUT -p tcp -i br-lan --dport 10808:10809 -j ACCEPT 2>/dev/null
+# Refresh native firewall hooks to flush temporary ingress rule adjustments
+/etc/init.d/firewall restart
 
-echo "Psiphon and all bridged connections have been successfully deactivated."
+echo "Psiphon engine and local bridge sockets have been completely turned off."
 
 ```
 
 ---
 
-## 💻 6. Client Configuration (Windows, Mobile, Browser Extensions)
+## 💻 6. Downstream Client Configurations (OS / Browser)
 
-Once the automation script runs successfully on the router, you can route your client device traffic through the proxy using the following parameters (e.g., inside FoxyProxy or your operating system's proxy settings):
+To pass proxy instructions down to your connected endpoints (Phones, Laptops, smart devices), navigate to your Operating System network rules or browser proxy manager (e.g., FoxyProxy) and configure the following parameters:
 
-* **Proxy Type:** `HTTP`
-* **IP Address:** `192.168.0.1` (Your router's local gateway IP address)
-* **Port:** `10809`
-EOF
-
-## 📂 File Structure & Target Paths on the Router
-
-To deploy this scenario on your router, the required files, directories, and their exact locations within the router's operating system (OpenWrt Linux) must be structured as follows:
-
-| # | Item Type | File / Directory Name | Target Path on Router | Description |
-| --- | --- | --- | --- | --- |
-| 1 | **Main Binary File** | `psiphon-core` | `/usr/bin/psiphon-core` | Compiled binary matching your router's architecture (e.g., GL-MT3000 utilizes MediaTek Filogic MT7981 with `ARM64` / `aarch64_cortex-a53` architecture). |
-| 2 | **Configuration File** | `psiphon.config` | `/usr/bin/psiphon.config` | Contains client configurations, obfuscation keys, and local port binds. |
-| 3 | **Internal Data Directory** | `psiphon_data` | `/usr/bin/psiphon_data/` | Stores internal server lists, handshake cache, and configuration updates. |
-| 4 | **Temporary Log File** | `psiphon.log` | `/tmp/psiphon.log` | Generated automatically in volatile memory (`/tmp`) for the script to extract dynamic random ports. |
-
-> 💡 **File Transfer Tip:** You can connect to your router using applications like **MobaXterm** or **WinSCP** (via SFTP or SCP protocol) to upload the `psiphon-core` binary directly into the `/usr/bin/` directory.
-
----
+* **Proxy Protocol Type:** `HTTP` or `SOCKS5`
+* **Server IP / Hostname:** Your router's management gateway IP (e.g., `192.168.18.1`)
+* **HTTP Port:** `10809`
+* **SOCKS Port:** `10808`
 
 ```
+---
 
 ```
