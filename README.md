@@ -149,33 +149,40 @@ INPUT_EOF
 
 #!/bin/sh
 
-# 🌍 تعیین کشور خروجی (کد دو حرفی بزرگ یا ALL برای سریعترین سرور)
+# 🌍 تعیین کشور خروجی
 TARGET_REGION="ALL"
-
 echo "تنظیم لوکیشن سایفون روی: $TARGET_REGION"
-# تغییر خودکار کشور در فایل کانفیگ اصلاحشده
+
+# تغییر کشور در فایل کانفیگ
 sed -i "s/\"egressRegion\": \".*\"/\"egressRegion\": \"$TARGET_REGION\"/g" /usr/bin/psiphon.config
 
-# ۱. بستن پروسه‌های قدیمی جهت رفع انسداد و جلوگیری از تداخل پورت‌ها
+# ۱. توقف پروسه‌های قدیمی
 killall -9 psiphon-core socat 2>/dev/null
-#rm -rf /usr/bin/psiphon_data/*
 
-# ۲. اجرای آنی هسته اصلی سایفون در پس‌زمینه (با پورت‌های ثابت داخلی ۱۰۸۸۸ و ۱۰۸۸۹)
+# ۲. اجرای سایفون
 /usr/bin/psiphon-core -config /usr/bin/psiphon.config -dataRootDirectory /usr/bin/psiphon_data > /tmp/psiphon.log 2>&1 &
 
-# ۳. تشخیص خودکار آی‌پای داخلی روتر شما (LAN IP)
+# ۳. حلقه انتظار هوشمند (صبر برای بالا آمدن شبکه و سایفون)
+echo "در حال انتظار برای شبکه و سایفون..."
+while ! ubus call network.interface.lan status >/dev/null 2>&1; do sleep 2; done
+while ! grep -q "ListeningSocksProxyPort" /tmp/psiphon.log; do sleep 1; done
+
+# ۴. شناسایی خودکار پورتهایی که سایفون واقعاً انتخاب کرده است
+SOCKS_PORT=$(grep "ListeningSocksProxyPort" /tmp/psiphon.log | grep -o '"port":[0-9]*' | cut -d':' -f2)
+HTTP_PORT=$(grep "ListeningHttpProxyPort" /tmp/psiphon.log | grep -o '"port":[0-9]*' | cut -d':' -f2)
 ROUTER_IP=$(ubus call network.interface.lan status | jsonfilter -e '@["ipv4-address"][0].address')
-echo "آی‌پای تشخیص داده شده روتر شما: $ROUTER_IP"
 
-# ۴. برقراری پل ارتباطی مستقیم و ثابت توسط socat به آی‌پای روتر 
-# پورت‌های خروجی برای دستگاه‌های متصل به وای‌فای روی ۱۰۸۰۸ و ۱۰۸۰۹ ثابت می‌مانند
-socat TCP-LISTEN:10809,fork,bind=$ROUTER_IP TCP:127.0.0.1:10889 &
-socat TCP-LISTEN:10808,fork,bind=$ROUTER_IP TCP:127.0.0.1:10888 &
+echo "پورتهای شناسایی شده: SOCKS=$SOCKS_PORT, HTTP=$HTTP_PORT"
+echo "آیپای روتر: $ROUTER_IP"
 
-# ۵. باز کردن فایروال بومی OpenWrt (nftables / fw4) جهت قبول دسترسی کلاینت‌ها
+# ۵. برقراری پل ارتباطی (از پورت ثابت ۱۰۸۰۸ به پورت واقعی که سایفون انتخاب کرده)
+socat TCP-LISTEN:10809,fork,bind=$ROUTER_IP TCP:127.0.0.1:$HTTP_PORT &
+socat TCP-LISTEN:10808,fork,bind=$ROUTER_IP TCP:127.0.0.1:$SOCKS_PORT &
+
+# ۶. تنظیم فایروال
 nft add rule inet fw4 input iifname "br-lan" tcp dport 10808-10809 accept 2>/dev/null
 
-echo "سایفون با موفقیت با پورتهای کاملاً ثابت و بدون معطلی فعال شد!"
+echo "سایفون با موفقیت با پورتهای ثابت ۱۰۸۰۸/۱۰۸۰۹ فعال شد!"
 
 ```
 
