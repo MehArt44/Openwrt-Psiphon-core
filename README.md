@@ -516,9 +516,15 @@ start_service() {
     # ۲. ساخت و بروزرسانی پویا و آنی فایل کانفیگ JSON سایفون بر اساس متغیرهای انتخابی لوسی
     cat << JSON > /usr/bin/psiphon.config
 {
+    "SocksProxyPort": $socks_port,
+    "HttpProxyPort": $http_port,
     "DataRootDirectory": "/usr/bin/psiphon_data",
     "EgressRegion": "$country",
-    "TransportProtocols": ["$transport"]
+    "TransportProtocols": ["$transport"],
+    "PropagationChannelId": "0000000000000000",
+    "SponsorId": "0000000000000000",
+    "ServerEntrySignaturePublicKey": "sHuUVTWaRyh5pZwy4UguSgkwmBe0EHtJJkoF5WrxmvA=",
+    "UseIndistinguishableTLS": true
 }
 JSON
 
