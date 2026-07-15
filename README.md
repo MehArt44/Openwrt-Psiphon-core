@@ -613,17 +613,14 @@ nft add rule inet fw4 input iifname "br-lan" tcp dport 10808-10809 accept 2>/dev
 ```bash
 
 # اضافه کردن قانون فایروال با ساختار کاملاً منظم و ایجاد خط جدید
-cat << 'EOF' >> /etc/config/firewall
+# ۱. پاک کردن تمام خطوط مربوط به قانون سایفون (پاکسازی فایل فایروال)
+sed -i '/Allow-Psiphon-Proxy/d' /etc/config/firewall
+sed -i '/Allow-Psiphon/d' /etc/config/firewall
 
-config rule
-	option name 'Allow-Psiphon-Proxy'
-	option src 'lan'
-	option dest_port '10808-10809'
-	option proto 'tcp'
-	option target 'ACCEPT'
+# ۲. اضافه کردن هوشمند و استاندارد قانون با فاصله‌های منظم (با استفاده از printf برای ایجاد دقیق Tab)
+printf "\nconfig rule\n\toption name 'Allow-Psiphon-Proxy'\n\toption src 'lan'\n\toption dest_port '10808-10809'\n\toption proto 'tcp'\n\toption target 'ACCEPT'\n" >> /etc/config/firewall
 
-EOF
-
+# ۳. اعمال تغییرات در فایروال سیستم
 /etc/init.d/firewall restart
 
 ```
