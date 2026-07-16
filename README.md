@@ -63,7 +63,6 @@ apk -U add socat curl wget-ssl coreutils-nohup
 ```bash
 
 
-
 cat << 'EOF' > /www/luci-static/resources/view/services/psiphon.js
 'use strict';
 'require view';
@@ -72,53 +71,158 @@ cat << 'EOF' > /www/luci-static/resources/view/services/psiphon.js
 'require ui';
 'require uci';
 'require poll';
-
 return L.view.extend({
-	// متغیر کمکی برای ذخیره آیپی روتر
 	router_ip: '192.168.18.1',
 
+	flags: {
+		AT: '🇦🇹', BE: '🇧🇪', CA: '🇨🇦', CH: '🇨🇭', DE: '🇩🇪', DK: '🇩🇰', 
+		ES: '🇪🇸', FI: '🇫🇮', FR: '🇫🇷', GB: '🇬🇧', IT: '🇮🇹', JP: '🇯🇵', 
+		NL: '🇳🇱', NO: '🇳🇴', PL: '🇵🇱', SE: '🇸🇪', SG: '🇸🇬', US: '🇺🇸'
+	},
+
 	load: function() {
-		// واکشی خودکار آیپی محلی (LAN) روتر از uci قبل از رندر صفحه
 		return L.uci.load('network').then(L.bind(function() {
 			var ip = L.uci.get('network', 'lan', 'ipaddr');
 			if (ip) {
 				this.router_ip = ip;
+			}
+			
+			if (!document.getElementById('noto-emoji-font')) {
+				var link = document.createElement('link');
+				link.id = 'noto-emoji-font';
+				link.rel = 'stylesheet';
+				link.href = 'https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap';
+				document.head.appendChild(link);
+				
+				var style = document.createElement('style');
+				style.innerHTML = `
+					.win-flag { font-family: "Noto Color Emoji", "Segoe UI Emoji", "Apple Color Emoji", sans-serif !important; }
+					
+					/* QR Code Hover Styles with matching GL.iNet Blue/Cyan Theme */
+					.qr-trigger-wrapper {
+						display: inline-flex;
+						align-items: center;
+						gap: 6px;
+						position: relative;
+						margin-left: 8px;
+					}
+					.qr-badge {
+						background: #00b4d8;
+						color: #ffffff;
+						font-size: 10px;
+						font-weight: bold;
+						padding: 3px 8px;
+						border-radius: 4px;
+						cursor: pointer;
+						transition: all 0.25s ease-in-out;
+						box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+						border: 1px solid rgba(255,255,255,0.1);
+					}
+					.qr-badge:hover {
+						background: #0096c7;
+						transform: scale(1.05);
+						box-shadow: 0 0 8px rgba(0, 180, 216, 0.4);
+					}
+					.qr-popup-window {
+						visibility: hidden;
+						opacity: 0;
+						position: absolute;
+						bottom: 135%;
+						left: 50%;
+						transform: translateX(-50%) translateY(10px);
+						background: #14171f;
+						border: 1px solid #00b4d8;
+						border-radius: 12px;
+						padding: 12px;
+						box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(0, 180, 216, 0.15);
+						z-index: 9999;
+						width: 180px;
+						text-align: center;
+						transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s;
+						pointer-events: none;
+					}
+					.qr-trigger-wrapper:hover .qr-popup-window {
+						visibility: visible;
+						opacity: 1;
+						transform: translateX(-50%) translateY(0);
+						pointer-events: auto;
+					}
+					.qr-popup-window img {
+						width: 150px;
+						height: 150px;
+						border-radius: 8px;
+						background: #fff;
+						padding: 8px;
+						display: block;
+						margin: 0 auto 10px auto;
+						box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
+					}
+					.qr-popup-window span {
+						font-size: 11px;
+						color: #00b4d8;
+						word-break: break-all;
+						font-family: monospace;
+						display: block;
+						background: rgba(0, 180, 216, 0.08);
+						padding: 4px 6px;
+						border-radius: 4px;
+						border: 1px solid rgba(0, 180, 216, 0.15);
+					}
+				`;
+				document.head.appendChild(style);
 			}
 		}, this));
 	},
 
 	render: function() {
 		const self = this;
-		const m = new L.form.Map('psiphon', _('Psiphon VPN Configuration'), _('Unified Single-Page Control Panel for Psiphon Tunnel Core.'));
+		const logoContainer = E('div', { 
+			'id': 'psiphon-dynamic-logo',
+			'style': 'width: 64px; height: 64px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;' 
+		});
+		function getLogoSvg(primaryColor, secondaryColor) {
+			return `<svg width="64" height="64" viewBox="0 0 48.00 48.00" xmlns="http://www.w3.org/2000/svg" fill="#000000" stroke="#000000" stroke-width="0">
+				<path d="M 12 0 H 36 A 12 12 0 0 1 48 12 V 36 A 12 12 0 0 1 36 48 H 12 A 12 12 0 0 1 0 36 V 12 A 12 12 0 0 1 12 0 Z" fill="${primaryColor}" stroke-width="0"/>
+				<path d="M 20.593 32.889 L 34.273 32.824 L 37.97 29.341 L 40.491 9.289 L 37.302 5.922 L 10.97 5.601 C 9.476 6.667 8.285 8.104 7.514 9.77 L 17.57 9.868 L 13.607 40.876 C 15.408 41.841 17.408 42.377 19.45 42.444 L 
+20.593 32.889 Z" style="stroke-width: 0.192; fill: rgb(255, 255, 255); paint-order: stroke; stroke: none;"/>
+				<path d="M 23.797 11.765 L 21.624 26.41 L 31.601 26.303 L 33.739 11.765 L 23.797 11.765 Z" style="stroke-width: 0.192; fill-rule: nonzero; paint-order: stroke markers; fill: ${secondaryColor}; stroke: none;"/>
+			</svg>`;
+		}
+
+		logoContainer.innerHTML = getLogoSvg('#fb510c', '#f45825');
+
+		const titleHtml = E('div', { 'style': 'display: flex; align-items: center; gap: 16px; margin-bottom: 20px; padding: 10px 0;' }, [
+			logoContainer,
+			E('div', { 'style': 'display: flex; flex-direction: column; justify-content: center;' }, [
+				E('h2', { 'style': 'margin: 0; font-weight: bold; color: #fff; font-size: 26px; line-height: 1.2;' }, _('Psiphon VPN Configuration')),
+				E('span', { 'style': 'font-size: 12px; color: #aaa; display: block; margin-top: 5px;' }, _('Unified Single-Page Control Panel for Psiphon Tunnel Core.'))
+			])
+		]);
+		const m = new L.form.Map('psiphon', titleHtml);
 		const s = m.section(L.form.NamedSection, 'config', 'psiphon', _('Service Status & Configuration'));
 		s.addremove = false;
-		
-		// ==========================================
-		// بخش ۱: داشبورد مانیتورینگ آیپی
-		// ==========================================
 		let o = s.option(L.form.DummyValue, '_ip_box');
 		o.rawhtml = true;
 		o.render = function() {
 			return E('div', { 'class': 'cbi-value', 'style': 'margin-bottom: 20px;' }, [
-				E('div', { 'style': 'display: flex; flex-flow: row wrap; align-items: center; justify-content: space-between; background: #1a1c20; padding: 12px 20px; border-radius: 8px; border: 1px solid #333; box-shadow: 0 4px 6px rgba(0,0,0,0.3); width: 100%; gap: 15px;' }, [
+				E('div', { 'style': 'display: flex; flex-flow: row wrap; align-items: center; justify-content: space-between; background: #1a1c20; padding: 14px 20px; border-radius: 8px; border: 1px solid #333; box-shadow: 0 4px 6px rgba(0,0,0,0.3); width: 100%; gap: 15px;' }, [
 					
-					// بخش آیپی اصلی
-					E('div', { 'style': 'display: flex; align-items: center; gap: 8px;' }, [
-						E('span', { 'style': 'color: #88a; font-size: 13px; text-transform: uppercase; font-weight: bold;' }, _('🔴 Real IP:')),
-						E('span', { 'id': 'real_ip_display', 'style': 'font-size: 14px; color: #ccc; font-family: monospace;' }, _('⏳ Checking...'))
+					// Real IP
+					E('div', { 'style': 'display: flex; align-items: center; gap: 8px; flex: 1 1 0%; min-width: 220px;' }, [
+						E('span', { 'style': 'color: #88a; font-size: 13px; text-transform: uppercase; font-weight: bold; width: 65px; flex-shrink: 0;' }, _('Real IP')),
+						E('span', { 'id': 'real_ip_display', 'style': 'font-size: 14px; color: #ccc; font-family: monospace; display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;' }, _('Checking'))
 					]),
 
-					// خط جداکننده وسط
 					E('div', { 'style': 'width: 1px; height: 24px; background-color: #444; display: inline-block;' }, ''),
 
-					// بخش آیپی سایفون
-					E('div', { 'style': 'display: flex; align-items: center; gap: 8px; flex: 1;' }, [
-						E('span', { 'style': 'color: #88a; font-size: 13px; text-transform: uppercase; font-weight: bold;' }, _('🟢 Psiphon IP:')),
-						E('span', { 'id': 'vpn_ip_display', 'style': 'font-size: 14px; color: #00ff66; font-family: monospace;' }, _('⏳ Checking...'))
+					// Psiphon IP
+					E('div', { 'style': 'display: flex; align-items: center; gap: 8px; flex: 1 1 0%; min-width: 220px;' }, [
+						E('span', { 'style': 'color: #88a; font-size: 13px; text-transform: uppercase; font-weight: bold; width: 85px; flex-shrink: 0;' }, _('Psiphon IP')),
+						E('span', { 'id': 'vpn_ip_display', 'style': 'font-size: 14px; color: #00ff66; font-family: monospace; display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;' }, _('Checking'))
 					]),
 
-					// دکمه رفرش
-					E('div', {}, [
+					// Refresh Button
+					E('div', { 'style': 'flex-shrink: 0;' }, [
 						E('button', {
 							'class': 'btn cbi-button cbi-button-apply',
 							'style': 'padding: 6px 15px; font-weight: bold; white-space: nowrap;',
@@ -126,20 +230,28 @@ return L.view.extend({
 								ev.preventDefault();
 								refreshIPs();
 							}
-						}, _('🔄 Refresh'))
+						}, _('Refresh'))
 					])
 				])
 			]);
 		};
 
 		function updateDisplayElement(el, data, fallbackText, successColor) {
-			if (!el) return;
-			if (data && data.status === 'success') {
-				const flagUrl = 'https://flagcdn.com/w20/' + data.countryCode.toLowerCase() + '.png';
+			if (el == null) return;
+			if (data && data.query) {
+				const cc = (data.countryCode || data.country_code || data.country || '').toUpperCase();
+				const countryName = data.countryName || data.country || '';
 				el.innerHTML = '';
-				el.appendChild(E('img', { 'src': flagUrl, 'style': 'vertical-align: middle; margin-right: 8px; border-radius: 2px;', 'alt': data.countryCode }));
-				el.appendChild(E('b', { 'style': 'font-size: 15px; color: ' + (successColor || '#ccc') }, data.query));
-				el.appendChild(E('span', { 'style': 'color: #888; font-size: 12px; margin-left: 5px;' }, '(' + data.country + ')'));
+				
+				const flagEmoji = self.flags[cc] || '';
+				if (flagEmoji) {
+					el.appendChild(E('span', { 'class': 'win-flag', 'style': 'font-size: 18px; line-height: 1; vertical-align: middle;' }, flagEmoji));
+				}
+				
+				el.appendChild(E('b', { 'style': 'font-size: 15px; margin-left: 6px; vertical-align: middle; color: ' + (successColor || '#ccc') }, ' ' + data.query));
+				if (countryName) {
+					el.appendChild(E('span', { 'style': 'color: #888; font-size: 12px; margin-left: 5px; white-space: nowrap; vertical-align: middle;' }, '(' + countryName + ')'));
+				}
 			} else {
 				el.textContent = fallbackText;
 			}
@@ -148,49 +260,85 @@ return L.view.extend({
 		function refreshIPs() {
 			const elReal = document.getElementById('real_ip_display');
 			const elVpn = document.getElementById('vpn_ip_display');
-			if (elReal) elReal.textContent = '⏳ ' + _('Checking...');
-			if (elVpn) elVpn.textContent = '⏳ ' + _('Checking...');
+			const elLogo = document.getElementById('psiphon-dynamic-logo');
+			if (elReal) elReal.textContent = _('Checking');
+			if (elVpn) elVpn.textContent = _('Checking');
+			fetch('https://ipinfo.io/json', { method: 'GET', mode: 'cors' })
+				.then(function(res) { return res.json(); })
+				.then(function(data) {
+					const formatted = {
+						status: 'success',
+						query: data.ip,
+						countryCode: data.country,
+						country: data.country
+					};
+					updateDisplayElement(elReal, formatted, _('Failed'));
+				})
+				.catch(function() {
+					fetch('https://ip-api.com/json/', { method: 'GET', mode: 'cors' })
+						.then(function(res) { return res.json(); })
+						.then(function(data) {
+							updateDisplayElement(elReal, data, _('Failed'));
+						})
+						.catch(function() {
+							L.fs.exec('/bin/sh', ['-c', 'curl -sL -m 4 https://ipinfo.io/json || curl -sL -m 4 http://api.com/json/ || true']).then(function(res) {
+								try {
+									if (res.stdout && res.stdout.trim() !== '') {
+										const parsed = JSON.parse(res.stdout);
+										const formatted = {
+											status: 'success',
+											query: parsed.ip || parsed.query,
+											countryCode: parsed.country || parsed.countryCode,
+											country: parsed.country || parsed.countryName
+										};
+										updateDisplayElement(elReal, formatted, _('Network Error'));
+									} else {
+										if (elReal) elReal.textContent = _('Network Error');
+									}
+								} catch(e) {
+									if (elReal) elReal.textContent = _('Failed');
+								}
+							});
+						});
+				});
 
-			// ۱. بررسی آی‌پی بدون پروکسی (Real IP)
-			const cmdReal = 'curl -sL -m 5 http://ip-api.com/json/ || wget -qO- --timeout=5 http://ip-api.com/json/ || true';
-			L.fs.exec('/bin/sh', ['-c', cmdReal]).then(function(res) {
-				try {
-					if (res.stdout && res.stdout.trim() !== '') {
-						const d = JSON.parse(res.stdout);
-						updateDisplayElement(elReal, d, '⚠️ ' + _('Failed'));
-					} else {
-						if (elReal) elReal.textContent = '⚠️ ' + _('Network Error');
-					}
-				} catch(e) { 
-					if (elReal) elReal.textContent = '⚠️ ' + _('Parse Error'); 
-				}
-			}).catch(function() {
-				if (elReal) elReal.textContent = '⚠️ ' + _('System Error');
-			});
-
-			// ۲. بررسی آی‌پی سایفون از روی پورت پچ‌شده و آی‌پی LAN روتر به صورت داینامیک
 			const current_lan_ip = self.router_ip || '192.168.18.1';
-			const cmdVpn = 'curl -sL -m 6 -x http://' + current_lan_ip + ':10809 http://ip-api.com/json/ || curl -sL -m 6 --socks5 ' + current_lan_ip + ':10808 http://ip-api.com/json/ || wget -qO- -e use_proxy=yes -e http_proxy=http://' + current_lan_ip + ':10809 --timeout=6 http://ip-api.com/json/ || true';
-			
+			const cmdVpn = 'curl -sL -m 5 -x http://' + current_lan_ip + ':10809 http://ip-api.com/json/ || curl -sL -m 5 --socks5 ' + current_lan_ip + ':10808 http://ip-api.com/json/ || curl -sL -m 5 -x http://' + current_lan_ip + ':10809 https://ipinfo.io/json || true';
 			L.fs.exec('/bin/sh', ['-c', cmdVpn]).then(function(res) {
 				try {
 					if (res.stdout && res.stdout.trim() !== '') {
-						const d = JSON.parse(res.stdout);
-						updateDisplayElement(elVpn, d, '🔴 ' + _('Disconnected'), '#00ff66');
+						const parsed = JSON.parse(res.stdout);
+						const formatted = {
+							status: 'success',
+							query: parsed.query || parsed.ip,
+							countryCode: parsed.countryCode || parsed.country,
+							country: parsed.country || parsed.countryName
+						};
+						updateDisplayElement(elVpn, formatted, _('Disconnected'), '#00ff66');
+						
+						if (elLogo) {
+							elLogo.innerHTML = getLogoSvg('#00e873', '#00e873');
+						}
 					} else {
-						if (elVpn) elVpn.textContent = '🔴 ' + _('Disconnected');
+						if (elVpn) elVpn.textContent = _('Disconnected');
+						if (elLogo) {
+							elLogo.innerHTML = getLogoSvg('#fb510c', '#f45825');
+						}
 					}
 				} catch(e) { 
-					if (elVpn) elVpn.textContent = '🔴 ' + _('Disconnected'); 
+					if (elVpn) elVpn.textContent = _('Disconnected'); 
+					if (elLogo) {
+						elLogo.innerHTML = getLogoSvg('#fb510c', '#f45825');
+					}
 				}
 			}).catch(function() {
-				if (elVpn) elVpn.textContent = '🔴 ' + _('Disconnected');
+				if (elVpn) elVpn.textContent = _('Disconnected');
+				if (elLogo) {
+					elLogo.innerHTML = getLogoSvg('#fb510c', '#f45825');
+				}
 			});
 		}
 		
-		// ==========================================
-		// بخش ۲: کنترل سرویس
-		// ==========================================
 		o = s.option(L.form.DummyValue, '_control_buttons');
 		o.rawhtml = true;
 		o.render = function() {
@@ -202,65 +350,82 @@ return L.view.extend({
 						'style': 'margin-right: 10px;', 
 						'click': function(ev) { 
 							ev.preventDefault(); 
-							ui.showModal(_('Stopping service...'), [ E('p', { 'class': 'spinning' }, _('Please wait...')) ]);
+							ui.showModal(_('Stopping service'), [ E('p', { 'class': 'spinning' }, _('Please wait')) ]);
 							L.fs.exec('/etc/init.d/psiphon', ['stop']).then(function() { 
 								L.fs.exec('/bin/sh', ['-c', 'killall -9 psiphon-core socat 2>/dev/null || true']).then(function() {
 									ui.hideModal();
-									ui.addNotification(null, E('p', _('Psiphon Service Stopped successfully.')), 'info');
+									ui.addNotification(null, E('p', _('Psiphon Service Stopped successfully')), 'info');
 									refreshIPs();
 								});
 							}).catch(function(err) { 
 								ui.hideModal();
-								ui.addNotification(null, E('p', _('Stop Error: ') + err), 'danger');
+								ui.addNotification(null, E('p', _('Stop Error ') + err), 'danger');
 							}); 
 						}
 					}, _('Stop')),
 					E('button', { 
 						'class': 'btn cbi-button cbi-button-apply', 
 						'click': function(ev) { 
-							ev.preventDefault(); 
-							ui.showModal(_('Starting service...'), [ E('p', { 'class': 'spinning' }, _('Initializing Psiphon Core...')) ]);
-							L.fs.exec('/etc/init.d/psiphon', ['start']).then(function() { 
+							ev.preventDefault();
+							ui.showModal(_('Starting service'), [ E('p', { 'class': 'spinning' }, _('Initializing Psiphon Core')) ]);
+							
+							// 
+							L.fs.exec('/etc/init.d/psiphon', ['start']).then(function() {
+								// 
+							}).catch(function(err) {
+								console.error('Start error:', err);
+							});
+							
+							setTimeout(function() {
 								ui.hideModal();
-								ui.addNotification(null, E('p', _('Psiphon Service Started successfully.')), 'info');
-								setTimeout(refreshIPs, 3000);
-							}).catch(function(err) { 
-								ui.hideModal();
-								ui.addNotification(null, E('p', _('Start Error: ') + err), 'danger');
-							}); 
+								ui.addNotification(null, E('p', _('Psiphon Service started in background. Please wait a moment for the connection.')), 'info');
+								setTimeout(refreshIPs, 5000);
+							}, 1000);
 						}
 					}, _('Start'))
 				])
 			]);
 		};
 
-		// ==========================================
-		// بخش ۳: تنظیمات عمومی و پورتها
-		// ==========================================
 		o = s.option(L.form.Flag, 'enabled', _('Enable'));
 		o.rmempty = false;
 
 		o = s.option(L.form.ListValue, 'country', _('Region'));
-		o.value('', _('Best Performance'));
-		o.value('AT', _('Austria'));
-		o.value('BE', _('Belgium'));
-		o.value('CA', _('Canada'));
-		o.value('CH', _('Switzerland'));
-		o.value('DE', _('Germany'));
-		o.value('DK', _('Denmark'));
-		o.value('ES', _('Spain'));
-		o.value('FI', _('Finland'));
-		o.value('FR', _('France'));
-		o.value('GB', _('United Kingdom'));
-		o.value('IT', _('Italy'));
-		o.value('JP', _('Japan'));
-		o.value('NL', _('Netherlands'));
-		o.value('NO', _('Norway'));
-		o.value('PL', _('Poland'));
-		o.value('SE', _('Sweden'));
-		o.value('SG', _('Singapore'));
-		o.value('US', _('United States'));
+		o.rmempty = true;
+		o.optional = true;
+
+		o.value('', '⚡ ' + _('Best Performance'));
+
+		const countries = [
+			{ code: 'AT', name: 'Austria' },
+			{ code: 'BE', name: 'Belgium' },
+			{ code: 'CA', name: 'Canada' },
+			{ code: 'CH', name: 'Switzerland' },
+			{ code: 'DE', name: 'Germany' },
+			{ code: 'DK', name: 'Denmark' },
+			{ code: 'ES', name: 'Spain' },
+			{ code: 'FI', name: 'Finland' },
+			{ code: 'FR', name: 'France' },
+			{ code: 'GB', name: 'United Kingdom' },
+			{ code: 'IT', name: 'Italy' },
+			{ code: 'JP', name: 'Japan' },
+			{ code: 'NL', name: 'Netherlands' },
+			{ code: 'NO', name: 'Norway' },
+			{ code: 'PL', name: 'Poland' },
+			{ code: 'SE', name: 'Sweden' },
+			{ code: 'SG', name: 'Singapore' },
+			{ code: 'US', name: 'United States' }
+		];
+
+		countries.forEach(function(c) {
+			const flag = self.flags[c.code] || '';
+			o.value(c.code, flag + ' [' + c.code + '] ' + c.name);
+		});
 		o.default = '';
+
+		o.write = function(section_id, value) {
+			return L.form.ListValue.prototype.write.call(this, section_id, value);
+		};
 
 		o = s.option(L.form.ListValue, 'transport', _('Transport Mode'));
 		o.value('STANDARD', _('Standard'));
@@ -268,46 +433,69 @@ return L.view.extend({
 		o.value('SSH', _('SSH'));
 		o.default = 'STANDARD';
 
-		// پورت SOCKS با قابلیت تولید خودکار توضیحات بر اساس آیپی روتر
+		// Helper to generate V2Ray Hover QR HTML (Using matching Cyan / Navy blue theme)
+		function buildQrMarkup(protocol, ip, port, remarks) {
+			const rawConfig = protocol + '://' + ip + ':' + port + '#' + remarks;
+			const qrApiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(rawConfig);
+			return `<div class="qr-trigger-wrapper">
+				<span class="qr-badge">QR CONFIG</span>
+				<div class="qr-popup-window">
+					<img src="${qrApiUrl}" alt="QR Code" />
+					<span>${rawConfig}</span>
+				</div>
+			</div>`;
+		}
+
 		const socksOpt = s.option(L.form.Value, 'socks_port', _('SOCKS Port'));
 		socksOpt.datatype = 'port';
 		socksOpt.default = '10808';
-		socksOpt.description = _('Connect clients to: ') + '<b>' + self.router_ip + ':10808</b>';
+		socksOpt.rawhtml = true;
+		socksOpt.description = _('Connect clients to ') + '<b>' + self.router_ip + ':10808</b>' + 
+			buildQrMarkup('socks', self.router_ip, '10808', 'Psiphon-SOCKS');
 		socksOpt.write = function(section_id, value) {
-			this.description = _('Connect clients to: ') + '<b>' + self.router_ip + ':' + (value || '10808') + '</b>';
+			const targetPort = value || '10808';
+			this.description = _('Connect clients to ') + '<b>' + self.router_ip + ':' + targetPort + '</b>' +
+				buildQrMarkup('socks', self.router_ip, targetPort, 'Psiphon-SOCKS');
 			return L.form.Value.prototype.write.call(this, section_id, value);
 		};
 
-		// پورت HTTP با قابلیت تولید خودکار توضیحات بر اساس آیپی روتر
 		const httpOpt = s.option(L.form.Value, 'http_port', _('HTTP Port'));
 		httpOpt.datatype = 'port';
 		httpOpt.default = '10809';
-		httpOpt.description = _('Connect clients to: ') + '<b>' + self.router_ip + ':10809</b>';
+		httpOpt.rawhtml = true;
+
+		httpOpt.description = _('Connect clients to ') + '<b>' + self.router_ip + ':10809</b>' +
+			buildQrMarkup('http', self.router_ip, '10809', 'Psiphon-HTTP');
 		httpOpt.write = function(section_id, value) {
-			this.description = _('Connect clients to: ') + '<b>' + self.router_ip + ':' + (value || '10809') + '</b>';
+			const targetPort = value || '10809';
+			this.description = _('Connect clients to ') + '<b>' + self.router_ip + ':' + targetPort + '</b>' +
+				buildQrMarkup('http', self.router_ip, targetPort, 'Psiphon-HTTP');
 			return L.form.Value.prototype.write.call(this, section_id, value);
 		};
 
-		// ==========================================
-		// بخش ۴: مدیریت لاگها
-		// ==========================================
+		o = s.option(L.form.Flag, 'beast_mode', _('Beast Mode'), _('Aggressive connection tries all protocols on every server'));
+		o.rmempty = true;
+		o.default = '0';
+
+		o = s.option(L.form.Value, 'cdn_edge_ips', _('CDN edge IPs'), _('Optional CDN edge IPs separated by commas spaces or new lines'));
+		o.rmempty = true;
+
+		o = s.option(L.form.Value, 'cdn_sni', _('CDN SNI hostname'), _('Optional SNI hostname for CDN edge IPs leave blank to use the built-in behavior'));
+		o.rmempty = true;
+
 		o = s.option(L.form.Button, '_clear_log', _('Log Actions'));
 		o.inputtitle = _('Clear Log Screen');
 		o.inputstyle = 'reset';
 		o.onclick = function(ev) {
 			const box = document.getElementById('psiphon_live_log');
-			if (box) box.value = _('Log monitor cleared...');
+			if (box) box.value = _('Log monitor cleared');
 			return L.fs.exec('/bin/sh', ['-c', '> /tmp/psiphon.log || true']);
 		};
 
-		// ==========================================
-		// بخش ۵: نمایشگر لاگ و ترمینال (هم‌تراز شده)
-		// ==========================================
 		o = s.option(L.form.DummyValue, '_console_and_log');
 		o.rawhtml = true;
 		o.render = function() {
 			return E('div', {}, [
-				// ردیف اول: لاگ‌ها
 				E('div', { 'class': 'cbi-value' }, [
 					E('label', { 'class': 'cbi-value-title' }, _('Logs')),
 					E('div', { 'class': 'cbi-value-field', 'style': 'width: 100%; box-sizing: border-box;' }, [
@@ -315,17 +503,16 @@ return L.view.extend({
 							'id': 'psiphon_live_log', 
 							'style': 'width: 100%; height: 260px; font-family: monospace; font-size: 12px; background: #111; color: #00ff66; padding: 10px; border-radius: 4px; border: 1px solid #222; resize: none; line-height: 1.6; box-sizing: border-box; margin-bottom: 15px;', 
 							'readonly': 'readonly' 
-						}, _('Waiting for log stream...'))
+						}, _('Waiting for log stream'))
 					])
 				]),
 				
-				// ردیف دوم: ترمینال (کاملاً هم‌تراز با استایل لوسی)
 				E('div', { 'class': 'cbi-value' }, [
 					E('label', { 'class': 'cbi-value-title' }, _('Terminal')),
 					E('div', { 'class': 'cbi-value-field', 'style': 'width: 100%; box-sizing: border-box;' }, [
 						E('textarea', { 
 							'id': 'cmd_input', 
-							'placeholder': 'Enter shell command here...\nExample: ps -w | grep psiphon', 
+							'placeholder': 'Enter shell command here\nExample ps -w | grep psiphon', 
 							'style': 'width: 100%; height: 90px; padding: 10px; margin-bottom: 10px; background: #1a1c20; color: #fff; border: 1px solid #444; font-family: monospace; resize: none; box-sizing: border-box; border-radius: 4px;' 
 						}),
 						E('div', { 'style': 'text-align: right;' }, [
@@ -335,7 +522,7 @@ return L.view.extend({
 									ev.preventDefault();
 									const cmdInput = document.getElementById('cmd_input');
 									const cmd = cmdInput ? cmdInput.value.trim() : '';
-									if (!cmd) return;
+									if (cmd === '') return;
 
 									const logArea = document.getElementById('psiphon_live_log');
 									if (logArea) {
@@ -351,18 +538,16 @@ return L.view.extend({
 										if (cmdInput) cmdInput.value = '';
 									});
 								}
-							}, _('▶ Run Command'))
+							}, _('Run Command'))
 						])
 					])
 				])
 			]);
 		};
 
-		// تابع هوشمند فیلتر و رندر لاگها
 		function fetchLog() {
 			const logArea = document.getElementById('psiphon_live_log');
-			if (!logArea) return; 
-			
+			if (logArea == null) return;
 			L.resolveDefault(L.fs.read('/tmp/psiphon.log'), '').then(function(res) {
 				if (res && res.trim() !== '') {
 					const lines = res.split('\n');
@@ -374,49 +559,47 @@ return L.view.extend({
 
 						try {
 							const logObj = JSON.parse(line);
-							const time = logObj.timestamp ? logObj.timestamp.substring(11, 19) : "";
+							const time = logObj.timestamp ? logObj.timestamp.substring(11, 19) : '';
 							
-							if (logObj.noticeType === "ConnectedServerRegion") {
-								filteredLog.push("[" + time + "] 🟢 CONNECTED TO SERVER REGION: " + logObj.data.serverRegion);
-							} else if (logObj.noticeType === "Tunnels") {
-								filteredLog.push("[" + time + "] ⚡ Active Tunnels Count: " + logObj.data.count);
-							} else if (logObj.noticeType === "TrafficRateLimits") {
+							if (logObj.noticeType === 'ConnectedServerRegion') {
+								filteredLog.push('[' + time + '] Connected to server region ' + logObj.data.serverRegion);
+							} else if (logObj.noticeType === 'Tunnels') {
+								filteredLog.push('[' + time + '] Tunnels Count ' + logObj.data.count);
+							} else if (logObj.noticeType === 'TrafficRateLimits') {
 								const down = (logObj.data.downstreamBytesPerSecond / 1024).toFixed(1);
 								const up = (logObj.data.upstreamBytesPerSecond / 1024).toFixed(1);
-								filteredLog.push("[" + time + "] 📊 Speed -> Down: " + down + " KB/s | Up: " + up + " KB/s");
-							} else if (logObj.noticeType === "ClientRegion") {
-								filteredLog.push("[" + time + "] 🌍 Current Internet Uplink Location: " + logObj.data.region);
-							} else if (logObj.noticeType === "SkipServerEntry") {
-								filteredLog.push("[" + time + "] ⚠️ Skipping Blocked Server: " + (logObj.data.reason || "Timeout"));
+								filteredLog.push('[' + time + '] Speed Down ' + down + ' KB/s Up ' + up + ' KB/s');
+							} else if (logObj.noticeType === 'ClientRegion') {
+								filteredLog.push('[' + time + '] Current Internet Location ' + logObj.data.region);
+							} else if (logObj.noticeType === 'SkipServerEntry') {
+								filteredLog.push('[' + time + '] Skipping Blocked Server ' + (logObj.data.reason || 'Timeout'));
 							}
 						} catch (e) {
-							if (!line.includes(" Listening") && !line.includes("Parameters") && !line.includes("AvailableEgress") && !line.includes("ActiveAuthorizationIDs")) {
+							if (line.includes(' Listening') === false && line.includes('Parameters') === false && line.includes('AvailableEgress') === false && line.includes('ActiveAuthorizationIDs') === false) {
 								filteredLog.push(line);
 							}
 						}
 					}
-					logArea.value = filteredLog.length > 0 ? filteredLog.join('\n') : _('Standby...');
+					logArea.value = filteredLog.length > 0 ? filteredLog.join('\n') : _('Standby');
 					logArea.scrollTop = logArea.scrollHeight;
 				} else {
-					logArea.value = _('Service stopped or log empty.');
+					logArea.value = _('Service stopped or log empty');
 				}
 			});
 		}
 
-		// راه‌اندازی تسک‌های خودکار و زمانبندی زنده LuCI Poll API
+		setTimeout(function() {
+			var dropdowns = document.querySelectorAll('.cbi-input-select, select, option, .control-group');
+			for (var i = 0; i < dropdowns.length; i++) {
+				dropdowns[i].classList.add('win-flag');
+			}
+		}, 500);
 		L.Poll.add(function() {
 			return Promise.all([
 				fetchLog()
 			]);
 		}, 3);
 
-		L.Poll.add(function() {
-			return Promise.all([
-				refreshIPs()
-			]);
-		}, 10);
-
-		// اجرای اولیه پس از لود صفحه
 		setTimeout(function() {
 			refreshIPs();
 			fetchLog();
@@ -427,11 +610,11 @@ return L.view.extend({
 });
 EOF
 
-# پاکسازی کامل کش وب و بازنشانی ایندکس لوسی
-rm -rf /tmp/luci-indexcache /tmp/luci-modulecache
-/etc/init.d/rpcd restart
+rm -rf /tmp/luci-indexcache /tmp/luci-modulecache && /etc/init.d/rpcd restart
 
-echo "Psiphon panel updated successfully! Please hard refresh your browser (Ctrl+F5)."
+echo "Successfully updated and fixed the start button! Please press Ctrl + F5."
+
+ok
 
 
 
@@ -670,3 +853,17 @@ echo "Psiphon app and all associated LuCI components successfully uninstalled."
 
 
 ```
+
+## محیط Luci برای سایفون 
+
+<img width="2851" height="2909" alt="LUCI for Psiphon" src="https://github.com/user-attachments/assets/243e98af-7b56-406f-a521-87eeab589462" />
+
+
+
+
+
+
+
+
+
+
